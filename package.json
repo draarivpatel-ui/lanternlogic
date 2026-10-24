@@ -1,0 +1,10 @@
+{
+  "name": "lanternlogic",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lantern Logic, a pumpkin carving puzzle game by Aariv Patel",
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "license": "MIT"
+}
