@@ -507,7 +507,9 @@
     const width = dom.gridWrap.clientWidth || 320;
     pumpkinSize = Math.max(220, Math.min(560, width));
     pumpkinCtx = setupCanvas(dom.pumpkin, pumpkinSize, pumpkinSize);
-    dom.pumpkin.style.height = pumpkinSize + 'px';
+    /* The square display size comes from the stylesheet (width 100 percent
+     * plus aspect ratio), so the drawing size and the rendered size agree at
+     * every viewport without an inline height fighting the CSS. */
     if (game) {
       ensureArt(game.level.id, pumpkinLayout());
     }

@@ -124,3 +124,14 @@ engine, twelve authored levels, keyboard and pointer play, and a test suite that
 the engine, the level data, and the page wiring. The build is GitHub Pages ready as is.
 The one thing it has not had is a human holding it, so a five minute play pass on real
 hardware, phone and laptop, is the highest value next step before submission.
+
+## Refinement Pass 2026-10-24
+
+A presentation wiring pass only. The engine and the level data are untouched.
+
+- Wiring audit: every id the shell references exists in the markup, no duplicate ids, no dead listeners, no reachable console errors.
+- Added Open Graph title, description and type tags. Share sheets had nothing to read before.
+- Fixed: sizePumpkin stamped an inline pixel height on the game canvas, which could fight the stylesheet square below about 245 px viewports and distort the drawing. The canvas now takes its square from CSS alone (width 100 percent, aspect ratio 1 to 1) and the drawing size and rendered size agree at every width.
+- Verified the game canvas scales down cleanly at 320 px: the carve area is 296 px wide there and the canvas follows it exactly, level cards collapse to one column, and the control buttons reflow into two columns.
+- Verified: the game clock and the visual loop already pause while the tab is hidden, reduced motion draws single static frames instead of animating, contrast tokens pass the suite's own AA assertions, and the copy carries no em or en dashes, no emoji, no all caps kickers.
+- Tests before the pass: 41 passed, 0 failed. Tests after: 41 passed, 0 failed. The DOM smoke script still clicks through the full flow with 26 checks passing.
