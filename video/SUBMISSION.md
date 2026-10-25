@@ -7,4 +7,4 @@ Lantern Logic is a puzzle game about carving the right pumpkin for every trick o
 
 Try it: https://aariv.me/lanternlogic/
 Code: https://github.com/draarivpatel-ui/lanternlogic
-Video: https://youtu.be/uTbd6WPR-7s
+Video: https://youtu.be/7IcBnfG4l3s
