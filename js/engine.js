@@ -44,7 +44,7 @@
 
   function firstInsideCell() {
     const cells = allInsideCells();
-    return cells.length ? { r: cells[0][0], c: cells[0][1] } : { r: 0, c: 0 };
+    return { r: cells[0][0], c: cells[0][1] };
   }
 
   /*
