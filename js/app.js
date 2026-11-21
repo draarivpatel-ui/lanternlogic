@@ -94,10 +94,17 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
-          return {
-            unlocked: Math.min(12, Math.max(1, parsed.unlocked || 1)),
-            best: parsed.best && typeof parsed.best === 'object' ? parsed.best : {}
-          };
+          const unlocked = Number.isFinite(parsed.unlocked)
+            ? Math.min(12, Math.max(1, Math.floor(parsed.unlocked)))
+            : 1;
+          const best = {};
+          if (parsed.best && typeof parsed.best === 'object' && !Array.isArray(parsed.best)) {
+            for (const id of Object.keys(parsed.best)) {
+              const v = parsed.best[id];
+              if (Number.isFinite(v)) best[id] = Math.min(100, Math.max(0, Math.round(v)));
+            }
+          }
+          return { unlocked: unlocked, best: best };
         }
       }
     } catch (err) {
@@ -369,7 +376,8 @@
   }
 
   function ensureArt(levelId, layout) {
-    const key = levelId + ':' + Math.round(layout.cell * 100);
+    const key = levelId + ':' + Math.round(layout.cell * 100) +
+      ':' + Math.round(layout.cx * 100) + ':' + Math.round(layout.cy * 100);
     if (artCache.key !== key) {
       artCache = { key: key, body: null, ribs: [] };
       artCache = buildArt(levelId, layout);
@@ -909,10 +917,10 @@
     return place + ' cleared.';
   }
 
-  function carveAt(r, c) {
+  function carveAt(r, c, announceResult) {
     if (!game || game.over) return;
     const result = L.applyCarve(game.state, game.level, r, c);
-    announce(carveResultMessage(result, r, c));
+    if (announceResult !== false) announce(carveResultMessage(result, r, c));
     updateCuts();
     if (REDUCED.matches) drawGamePumpkin(performance.now());
   }
@@ -1131,7 +1139,14 @@
 
   dom.gridWrap.addEventListener('keydown', (event) => {
     if (!game) return;
+    /* Modified keystrokes belong to the browser: Ctrl+R reloads, Cmd+Arrow
+     * navigates history. Single-key shortcuts never swallow them. */
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const key = event.key;
+    /* Held arrows may repeat for travel, but actions fire once: a held P
+     * would bleed five points a repeat into the report. */
+    if (event.repeat && key !== 'ArrowUp' && key !== 'ArrowDown' &&
+        key !== 'ArrowLeft' && key !== 'ArrowRight') return;
     if (key === 'ArrowUp') {
       event.preventDefault();
       moveCursor(-1, 0);
@@ -1144,9 +1159,12 @@
     } else if (key === 'ArrowRight') {
       event.preventDefault();
       moveCursor(0, 1);
-    } else if (key === ' ' || key === 'Spacebar' || key === 'Enter') {
+    } else if (key === ' ' || key === 'Spacebar') {
       event.preventDefault();
       carveAt(game.state.cursor.r, game.state.cursor.c);
+    } else if (key === 'Enter') {
+      event.preventDefault();
+      submitCarve(false);
     } else if (key === 'u' || key === 'U') {
       event.preventDefault();
       undoAction();
@@ -1166,12 +1184,16 @@
   let painting = false;
 
   function cellFromEvent(event) {
+    /* Hit-test in rendered CSS pixels, not drawing pixels: the canvas can be
+     * downscaled below the 220 px drawing floor on narrow screens or at high
+     * zoom, and the 5.5 percent margin must match drawPumpkinScene. */
     const rect = dom.pumpkin.getBoundingClientRect();
+    const margin = rect.width * 0.055;
+    const cell = (rect.width - margin * 2) / L.GRID;
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    const layout = pumpkinLayout();
-    const c = Math.floor((x - layout.margin) / layout.cell);
-    const r = Math.floor((y - layout.margin) / layout.cell);
+    const c = Math.floor((x - margin) / cell);
+    const r = Math.floor((y - margin) / cell);
     if (r < 0 || c < 0 || r >= L.GRID || c >= L.GRID) return null;
     return { r: r, c: c };
   }
@@ -1180,9 +1202,16 @@
     if (!game || game.over) return;
     event.preventDefault();
     painting = true;
+    /* Pointer users get keyboard play for free: park focus on the grid so
+     * arrows, space and Enter keep working after a tap. */
+    dom.gridWrap.focus({ preventScroll: true });
     const cell = cellFromEvent(event);
     if (cell) {
-      game.state.cursor = { r: cell.r, c: cell.c };
+      /* The knife lives inside the shell only. A tap on the bare margin
+       * must not park the cursor somewhere arrows can never reach. */
+      if (L.insidePumpkin(cell.r, cell.c)) {
+        game.state.cursor = { r: cell.r, c: cell.c };
+      }
       carveAt(cell.r, cell.c);
     }
   });
@@ -1191,12 +1220,22 @@
     if (!painting || !game || game.over) return;
     const cell = cellFromEvent(event);
     if (cell && !game.state.carved.has(L.key(cell.r, cell.c))) {
-      game.state.cursor = { r: cell.r, c: cell.c };
-      carveAt(cell.r, cell.c);
+      if (L.insidePumpkin(cell.r, cell.c)) {
+        game.state.cursor = { r: cell.r, c: cell.c };
+      }
+      /* Quiet during a drag: dozens of cells can pass under one stroke and
+       * each message used to shout into the live region. */
+      carveAt(cell.r, cell.c, false);
     }
   });
 
   window.addEventListener('pointerup', () => {
+    painting = false;
+  });
+
+  /* The OS can steal a drag mid-stroke (call, notification, gesture takeover);
+   * without this the pen keeps carving after the pointer is gone. */
+  window.addEventListener('pointercancel', () => {
     painting = false;
   });
 

@@ -57,12 +57,13 @@ performed in this build; the folder is a plain static site ready for GitHub Page
 
 ## Exact real test counts
 
-`npm test` runs 41 tests, 41 pass, 0 fail, about 45 ms on this machine. Well inside the
+`npm test` runs 44 tests, 44 pass, 0 fail, about 70 ms on this machine. Well inside the
 30 second budget. No network access anywhere.
 
-- `tests/engine.test.js`: 15 tests covering pumpkin geometry, pattern parsing, region
+- `tests/engine.test.js`: 18 tests covering pumpkin geometry, pattern parsing, region
   selection toggles, refusals outside the shell, the stem safe zone, cut budgets,
-  mirror twins, undo, reset, symmetry scoring, waste computation, and PRNG determinism.
+  mirror twins, undo, reset, symmetry scoring, waste computation, PRNG determinism,
+  hostile carve and score inputs, and malformed level data.
 - `tests/levels.test.js`: 9 tests on level data integrity, twelve ordered ids, every
   target inside the pumpkin, mirror symmetric targets, solvable cut budgets, sane time
   budgets, constraint escalation, known visitors, and copy hygiene with no em or en
@@ -77,9 +78,10 @@ performed in this build; the folder is a plain static site ready for GitHub Page
   9.96 for soft text, 9.05 for accent text, and 8.45 for button labels on lantern
   orange.
 
-The suites contain 232 written assert calls; because several run inside loops over all
-twelve levels and all inside cells, a runtime count comes to 1190 executed assertions.
-`scripts/dom-smoke.js` adds 26 wiring checks outside the default suite. The station
+The suites contain 251 written assert calls; because several run inside loops over all
+twelve levels and all inside cells, a runtime count comes to about 1220 executed
+assertions.
+`scripts/dom-smoke.js` adds 42 wiring checks outside the default suite. The station
 honesty harness audits the repo clean at 0 violations.
 
 ## Honest caveats

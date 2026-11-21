@@ -82,9 +82,15 @@
     if (typeof level.visitor !== 'string' || level.visitor.length === 0) throw new Error('level needs a visitor');
     if (typeof level.hint !== 'string' || level.hint.length === 0) throw new Error('level needs a hint');
     if (typeof level.intro !== 'string' || level.intro.length === 0) throw new Error('level needs an intro');
-    if (typeof level.time !== 'number' || !(level.time > 0)) throw new Error('level needs a positive time');
+    if (typeof level.time !== 'number' || !Number.isFinite(level.time) || !(level.time > 0)) throw new Error('level needs a positive time');
+    if (level.constraints != null && (typeof level.constraints !== 'object' || Array.isArray(level.constraints))) {
+      throw new Error('constraints must be an object');
+    }
 
     const constraints = level.constraints || {};
+    if (constraints.mirror != null && typeof constraints.mirror !== 'boolean') {
+      throw new Error('mirror must be true or false');
+    }
     const mirror = constraints.mirror === true;
     const maxCarved = constraints.maxCarved != null ? constraints.maxCarved : null;
     if (maxCarved !== null && (!Number.isInteger(maxCarved) || maxCarved < 1)) {
@@ -93,7 +99,11 @@
 
     const stemSafe = new Set();
     if (constraints.stemSafe) {
+      if (!Array.isArray(constraints.stemSafe)) throw new Error('stemSafe must be an array of cells');
       for (const cell of constraints.stemSafe) {
+        if (!Array.isArray(cell) || !Number.isInteger(cell[0]) || !Number.isInteger(cell[1])) {
+          throw new Error('stem safe cells must be integer pairs');
+        }
         const k = key(cell[0], cell[1]);
         if (!insidePumpkin(cell[0], cell[1])) {
           throw new Error('stem safe cell ' + k + ' sits outside the pumpkin');
@@ -146,6 +156,7 @@
    * every cell whose state actually changed.
    */
   function applyCarve(state, level, r, c) {
+    if (!Number.isInteger(r) || !Number.isInteger(c)) return { ok: false, reason: 'outside' };
     if (r < 0 || c < 0 || r >= GRID || c >= GRID) return { ok: false, reason: 'outside' };
     if (!insidePumpkin(r, c)) return { ok: false, reason: 'outside' };
     const k = key(r, c);
@@ -269,7 +280,8 @@
 
   function verdictFor(grade, levelId) {
     const list = VERDICTS[grade] || VERDICTS.E;
-    return list[(Math.max(1, levelId) - 1) % list.length];
+    const id = Number.isFinite(levelId) ? Math.max(1, Math.floor(levelId)) : 1;
+    return list[(id - 1) % list.length];
   }
 
   /*
@@ -280,9 +292,11 @@
    * is deterministic for a given carve state.
    */
   function scoreCarve(level, carved, opts) {
+    if (!level || typeof level !== 'object') throw new Error('level must be an object');
+    if (!(carved instanceof Set)) throw new Error('carved must be a Set of cell keys');
     const options = opts || {};
-    const timeLeft = options.timeLeft != null ? options.timeLeft : 0;
-    const peeks = options.peeks || 0;
+    const timeLeft = Number.isFinite(options.timeLeft) && options.timeLeft > 0 ? options.timeLeft : 0;
+    const peeks = Number.isFinite(options.peeks) && options.peeks > 0 ? options.peeks : 0;
 
     const metrics = computeWaste(carved, level.target);
     const shapeFrac = metrics.coverage * (1 - 0.5 * metrics.waste);
@@ -298,7 +312,7 @@
     const wasteScore = 100 * wasteFrac;
 
     const timeBonus = base >= 60
-      ? Math.round(10 * Math.max(0, timeLeft) / Math.max(1, level.time))
+      ? Math.min(10, Math.round(10 * timeLeft / Math.max(1, level.time)))
       : 0;
     const peekPenalty = PEEK_COST * peeks;
     const total = Math.max(0, Math.min(100, base - peekPenalty + timeBonus));

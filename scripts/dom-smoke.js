@@ -87,6 +87,9 @@ function makeElement(id) {
     },
     getContext() {
       return makeCtx();
+    },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, right: 320, bottom: 320, width: 320, height: 320 };
     }
   };
   Object.defineProperty(el, 'innerHTML', {
@@ -139,8 +142,11 @@ global.window = {
     return 0;
   },
   localStorage: {
-    getItem() {
-      return null;
+    /* A poisoned save: a non-numeric unlock value used to NaN its way into
+     * opening every level, and a negative best used to print on a card.
+     * The loader must fall back to one and drop the bogus scores. */
+    getItem(key) {
+      return key === 'lanternlogic.v1' ? '{"unlocked":"garbage","best":{"2":-2}}' : null;
     },
     setItem() {}
   },
@@ -195,6 +201,41 @@ check('undo empties the carve', $('cuts-num').textContent === '0');
 $('grid-wrap').dispatch('keydown', { key: 'r', preventDefault() {} });
 check('reset keeps the counter at zero', $('cuts-num').textContent === '0');
 
+const pumpkin = $('pumpkin');
+pumpkin.dispatch('pointerdown', { clientX: 150, clientY: 150, preventDefault() {} });
+check('pointerdown starts a paint stroke', $('cuts-num').textContent === '1');
+check('a tap hands keyboard focus to the playfield', lastFocus === 'grid-wrap');
+const strokeLive = live.textContent;
+pumpkin.dispatch('pointermove', { clientX: 180, clientY: 150, preventDefault() {} });
+check('dragging paints the next cell', $('cuts-num').textContent === '2');
+check('the drag carve stays quiet on the live region', live.textContent === strokeLive);
+for (const fn of (global.window.handlers && global.window.handlers.pointercancel) || []) fn();
+pumpkin.dispatch('pointermove', { clientX: 200, clientY: 150, preventDefault() {} });
+check('a cancelled pointer stops the stroke', $('cuts-num').textContent === '2');
+
+$('grid-wrap').dispatch('keydown', { key: 'r', ctrlKey: true, preventDefault() {} });
+check('Ctrl+R keeps the carve (shortcuts ignore modifiers)', $('cuts-num').textContent === '2');
+$('grid-wrap').dispatch('keydown', { key: 'u', metaKey: true, preventDefault() {} });
+check('Cmd+U keeps the carve (shortcuts ignore modifiers)', $('cuts-num').textContent === '2');
+$('grid-wrap').dispatch('keydown', { key: 'p', altKey: true, preventDefault() {} });
+check('Alt+P does not spend a peek', live.textContent.indexOf('5 points') === -1);
+
+pumpkin.dispatch('pointerdown', { clientX: 30, clientY: 30, preventDefault() {} });
+check('a tap on the bare margin adds no cut', $('cuts-num').textContent === '2');
+$('grid-wrap').dispatch('keydown', { key: 'ArrowRight', preventDefault() {} });
+check('the knife survives a tap outside the shell', live.textContent === 'Row 6, column 8');
+
+$('grid-wrap').dispatch('keydown', { key: 'p', repeat: true, preventDefault() {} });
+$('grid-wrap').dispatch('keydown', { key: 'p', repeat: true, preventDefault() {} });
+$('grid-wrap').dispatch('keydown', { key: 'p', repeat: true, preventDefault() {} });
+$('grid-wrap').dispatch('keydown', { key: ' ', repeat: true, preventDefault() {} });
+check('held keys do not repeat into cuts', $('cuts-num').textContent === '2');
+
+$('grid-wrap').dispatch('keydown', { key: 'Enter', preventDefault() {} });
+check('Enter lights the lantern like the help text promises', $('screen-results').hidden === false);
+check('the report total is numeric', !Number.isNaN(Number($('report-total-num').textContent)));
+check('held peeks cost nothing extra', $('report-peek').textContent === '0');
+
 frame(200);
 check('a game frame paints the pumpkin without crashing', true);
 
@@ -209,6 +250,10 @@ check('next level opens level 2', $('game-level-tag').textContent === 'Level 2 o
 $('grid-wrap').dispatch('keydown', { key: 'Escape', preventDefault() {} });
 check('escape returns to the level path', $('screen-levels').hidden === false);
 check('the level list rendered twelve cards', $('level-list').children.length === 12);
+check('a corrupt unlock value still locks level five',
+  $('level-list').children[4].children[0].getAttribute('aria-disabled') === 'true');
+check('a poisoned best score is clamped to zero',
+  $('level-list').children[1].children[0].children[2].textContent === 'Best 0 of 100');
 
 $('level-list').dispatch('click', {
   target: {

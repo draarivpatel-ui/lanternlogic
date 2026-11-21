@@ -619,6 +619,12 @@ kbd {
     grid-template-columns: 1fr;
   }
 
+  /* The playfield and its controls come first; the visitor panel scrolls
+   * under it so the game never starts below the fold on a phone. */
+  .carve-area {
+    order: -1;
+  }
+
   .visitor-panel {
     display: grid;
     grid-template-columns: 132px minmax(0, 1fr);
@@ -645,12 +651,12 @@ kbd {
   }
 
   .visitor-panel {
-    grid-template-columns: 1fr;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 0 var(--space-md);
   }
 
   .visitor-panel canvas {
-    grid-row: auto;
-    max-width: 180px;
+    grid-row: 1 / 4;
   }
 
   .controls {

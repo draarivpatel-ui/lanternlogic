@@ -269,3 +269,46 @@ test('cursor start sits inside the pumpkin', () => {
   const state = L.createGameState(level);
   assert.equal(L.insidePumpkin(state.cursor.r, state.cursor.c), true);
 });
+
+test('applyCarve refuses fractional and non-numeric cells', () => {
+  const level = L.normalizeLevel(makeLevel());
+  const state = L.createGameState(level);
+  for (const [r, c] of [[4.5, 3], [3, 'x'], [NaN, 5], [null, 2], [undefined, 2], [2, Infinity]]) {
+    const out = L.applyCarve(state, level, r, c);
+    assert.equal(out.ok, false, JSON.stringify([r, c]) + ' must refuse');
+    assert.equal(out.reason, 'outside');
+  }
+  assert.equal(state.carved.size, 0, 'no phantom keys reach the carve set');
+});
+
+test('scoreCarve sanitizes hostile options', () => {
+  const level = L.normalizeLevel(makeLevel());
+  const carved = new Set([L.key(4, 3), L.key(4, 4), L.key(4, 7), L.key(4, 8)]);
+  for (const bad of [NaN, 'abc', -5, Infinity]) {
+    const s = L.scoreCarve(level, carved, { timeLeft: bad });
+    assert.equal(s.timeBonus, 0, 'timeLeft ' + bad + ' earns no bonus');
+    assert.ok(Number.isFinite(s.total), 'total stays finite for timeLeft ' + bad);
+  }
+  const generous = L.scoreCarve(level, carved, { timeLeft: 9999 });
+  assert.ok(generous.timeBonus <= 10, 'the bonus is capped at 10, got ' + generous.timeBonus);
+  for (const bad of [-3, NaN, 'x']) {
+    const s = L.scoreCarve(level, carved, { peeks: bad });
+    assert.equal(s.peekPenalty, 0, 'peeks ' + bad + ' charges nothing');
+  }
+  assert.throws(() => L.scoreCarve(level, ['4,3'], {}), /Set/);
+  assert.throws(() => L.scoreCarve(null, carved, {}), /object/);
+  assert.equal(typeof L.verdictFor('A', NaN), 'string');
+  assert.equal(typeof L.verdictFor('A', 4.5), 'string');
+});
+
+test('normalizeLevel rejects malformed times, constraints and stem cells', () => {
+  assert.throws(() => L.normalizeLevel(makeLevel({ time: Infinity })), /positive time/);
+  assert.throws(() => L.normalizeLevel(makeLevel({ time: NaN })), /positive time/);
+  assert.throws(() => L.normalizeLevel(makeLevel({ constraints: [1, 2] })), /object/);
+  assert.throws(() => L.normalizeLevel(makeLevel({ constraints: 'yes' })), /object/);
+  assert.throws(() => L.normalizeLevel(makeLevel({ constraints: { mirror: 'yes' } })), /true or false/);
+  assert.throws(() => L.normalizeLevel(makeLevel({ constraints: { stemSafe: 'abc' } })), /array/);
+  assert.throws(() => L.normalizeLevel(makeLevel({ constraints: { stemSafe: [[1.5, 5]] } })), /integer pairs/);
+  const ok = L.normalizeLevel(makeLevel({ constraints: null }));
+  assert.equal(ok.mirror, false, 'absent constraints still normalize');
+});
