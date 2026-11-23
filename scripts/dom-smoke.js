@@ -157,8 +157,10 @@ global.window = {
 
 require('../js/levels.js');
 require('../js/engine.js');
+require('../js/solver-lab.js');
 global.window.LANTERN_LEVELS = globalThis.LANTERN_LEVELS;
 global.window.LanternLogic = globalThis.LanternLogic;
+global.window.LanternLab = globalThis.LanternLab;
 require('../js/app.js');
 
 const $ = (id) => global.document.getElementById(id);
@@ -276,6 +278,54 @@ check('a resize pass rebuilds the canvases without crashing', true);
 $('btn-quit').dispatch('click');
 $('btn-levels-back').dispatch('click');
 check('back returns to the title', lastFocus === 'title-heading');
+
+/* Lab wiring: the toggle appears only because the module loaded. */
+check('the lab module attaches to the window', typeof global.window.LanternLab.analyzeAll === 'function');
+check('the lab toggle is offered', $('btn-lab').hidden === false);
+check('the lab starts closed', $('lab-section').hidden === true);
+
+$('btn-lab').dispatch('click');
+check('opening the lab shows the panel', $('lab-section').hidden === false);
+check('the solvability table lists all twelve levels', $('lab-level-rows').children.length === 12);
+check('four strategy buttons render', $('lab-strategies').children.length === 4);
+check('the comparator table lists four strategies', $('lab-strategy-rows').children.length === 4);
+check('the blueprint draws the full 12 by 12 grid', $('lab-blueprint').children.length === 144);
+check('the on page digest is a 64 char hex', /^[0-9a-f]{64}$/.test($('lab-digest-code').textContent));
+
+$('lab-level-rows').children[4].children[0].children[0].dispatch('click');
+check('clicking a level row selects it',
+  $('lab-level-rows').children[4].children[0].children[0].getAttribute('aria-current') === 'true');
+
+$('lab-strategies').children[3].dispatch('click');
+check('clicking a strategy button presses it',
+  $('lab-strategies').children[3].getAttribute('aria-pressed') === 'true');
+check('the comparator rebuilt for the new strategy',
+  $('lab-strategy-rows').children[3].children[0].children[0].textContent === 'Mirror Unaware');
+
+const budgetBars = $('lab-budget-chart').children.filter((el) => el.getAttribute('role') === 'button');
+check('the chart draws twelve focusable level bars', budgetBars.length === 12);
+budgetBars[7].dispatch('keydown', { key: 'Enter', preventDefault() {} });
+check('a keyboard Enter on a bar selects its level',
+  $('lab-level-rows').children[7].children[0].children[0].getAttribute('aria-current') === 'true');
+
+$('btn-lab-verify').dispatch('click');
+check('the verify button confirms the digest', $('lab-verify-out').textContent.indexOf('Verified') === 0);
+
+$('btn-lab-tamper').dispatch('click');
+check('the tamper demo catches a forged total', $('lab-verify-out').textContent.indexOf('Tamper caught') === 0);
+
+$('btn-lab-tests').dispatch('click');
+check('the self test list ran every check', $('lab-test-list').children.length >= 16);
+check('every in page self test passed', /(\d+) of \d+ lab checks passing/.test($('lab-test-count').textContent) &&
+  $('lab-test-count').textContent.split(' ')[0] === $('lab-test-count').textContent.split(' ')[2]);
+
+const svgBars2 = $('lab-budget-chart').children.filter((el) => el.getAttribute('role') === 'button');
+svgBars2[4].dispatch('click');
+check('a pointer click on a bar selects level five',
+  $('lab-level-rows').children[4].children[0].children[0].getAttribute('aria-current') === 'true');
+
+$('btn-lab-jump').dispatch('click');
+check('jump to level opens the game on the lab selection', $('game-level-tag').textContent === 'Level 5 of 12');
 
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed > 0 ? 1 : 0);

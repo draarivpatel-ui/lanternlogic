@@ -28,6 +28,7 @@
         <div class="title-actions">
           <button id="btn-start" class="btn btn-primary" type="button">Start Carving</button>
           <button id="btn-levels" class="btn" type="button">Choose a Level</button>
+          <button id="btn-lab" class="btn" type="button" hidden>Solvability Lab</button>
         </div>
         <details class="how-to">
           <summary>How To Play</summary>
@@ -113,6 +114,56 @@
         </div>
       </section>
 
+      <section id="lab-section" class="lab" hidden aria-labelledby="lab-heading">
+        <h2 id="lab-heading" tabindex="-1">Solvability and Symmetry Lab</h2>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <h3>Twelve Level Solvability</h3>
+            <div class="lab-table-wrap">
+              <table class="lab-table" id="lab-level-table">
+                <thead>
+                  <tr><th scope="col">Level</th><th scope="col">Target</th><th scope="col">Min cuts</th><th scope="col">Budget</th><th scope="col">Headroom</th><th scope="col">Stem</th><th scope="col">Best</th></tr>
+                </thead>
+                <tbody id="lab-level-rows"></tbody>
+              </table>
+            </div>
+            <svg id="lab-budget-chart" class="lab-chart" role="img" aria-label="Cut budget versus minimum cuts for each level"></svg>
+          </div>
+          <div class="lab-panel">
+            <h3>Strategy Comparison</h3>
+            <div id="lab-strategies" class="lab-strategies" role="group" aria-label="Carving strategy"></div>
+            <div class="lab-table-wrap">
+              <table class="lab-table" id="lab-strategy-table">
+                <thead>
+                  <tr><th scope="col">Strategy</th><th scope="col">Cuts</th><th scope="col">Shape</th><th scope="col">Symmetry</th><th scope="col">Shell</th><th scope="col">Stem</th><th scope="col">Total</th></tr>
+                </thead>
+                <tbody id="lab-strategy-rows"></tbody>
+              </table>
+            </div>
+            <svg id="lab-blueprint" class="lab-blueprint" role="img" aria-label="Grid diff of the selected strategy against the wish"></svg>
+            <div class="lab-jump-row">
+              <button id="btn-lab-jump" class="btn btn-primary" type="button">Jump to Level</button>
+            </div>
+          </div>
+        </div>
+        <div class="lab-panel">
+          <h3>Audited Proof Brief</h3>
+          <p class="lab-digest"><span class="visually-hidden">Proof SHA-256 digest </span><code id="lab-digest-code"></code></p>
+          <div class="lab-actions">
+            <button id="btn-lab-json" class="btn" type="button">JSON</button>
+            <button id="btn-lab-csv" class="btn" type="button">CSV</button>
+            <button id="btn-lab-md" class="btn" type="button">Markdown</button>
+            <button id="btn-lab-link" class="btn" type="button">Copy Share Link</button>
+            <button id="btn-lab-verify" class="btn" type="button">Verify</button>
+            <button id="btn-lab-tamper" class="btn" type="button">Tamper Demo</button>
+            <button id="btn-lab-tests" class="btn" type="button">Run Self Tests</button>
+          </div>
+          <p id="lab-verify-out" class="lab-verify" role="status"></p>
+          <p id="lab-test-count" class="lab-verify"></p>
+          <ol id="lab-test-list" class="lab-tests"></ol>
+        </div>
+      </section>
+
     </main>
     <footer class="site-foot">
       <p>A game by Aariv Patel. Every star, silhouette, and pumpkin is drawn in code, no image files aboard.</p>
@@ -121,6 +172,7 @@
   <div id="live" class="visually-hidden" role="status" aria-live="polite"></div>
   <script src="js/levels.js"></script>
   <script src="js/engine.js"></script>
+  <script src="js/solver-lab.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

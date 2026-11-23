@@ -57,7 +57,7 @@ performed in this build; the folder is a plain static site ready for GitHub Page
 
 ## Exact real test counts
 
-`npm test` runs 44 tests, 44 pass, 0 fail, about 70 ms on this machine. Well inside the
+`npm test` runs 400 tests, 400 pass, 0 fail, about 135 ms on this machine. Well inside the
 30 second budget. No network access anywhere.
 
 - `tests/engine.test.js`: 18 tests covering pumpkin geometry, pattern parsing, region
@@ -77,18 +77,33 @@ performed in this build; the folder is a plain static site ready for GitHub Page
   WCAG contrast ratios computed from the parsed tokens, 15.72 for body ink on the sky,
   9.96 for soft text, 9.05 for accent text, and 8.45 for button labels on lantern
   orange.
+- `tests/solver-lab.test.js`: 356 tests on the lab module. FIPS 180-4 SHA-256 known
+  answer vectors including the million character case, per level solvability proofs
+  through the real carving rules, all four strategies against all twelve levels with
+  independent score recomputation, blueprint classification counts, chart row sanity,
+  the strict hash codec round trip and its hostile inputs, hostile state
+  normalization including prototype pollution keys, CSV formula defusing, digest
+  parity and tamper detection across all three export formats, and the in page self
+  test list itself.
 
-The suites contain 251 written assert calls; because several run inside loops over all
-twelve levels and all inside cells, a runtime count comes to about 1220 executed
-assertions.
-`scripts/dom-smoke.js` adds 42 wiring checks outside the default suite. The station
+The suites contain 442 written assert call sites; because many run inside loops over
+all twelve levels and all inside cells, the runtime count is several times higher.
+
+`scripts/dom-smoke.js` adds 62 wiring checks outside the default suite, including the
+lab toggle, tables, blueprint, chart bars, verify, tamper, self tests, and jump to
+level. `scripts/browser-audit.js` adds 56 headless Chromium checks across 1440x900
+and 390x844: zero console errors, zero exceptions, zero external requests, zero
+horizontal overflow, the playfield fully above the phone fold, and real pointer
+clicks through the whole lab plus a bookmark hash reload restore. The station
 honesty harness audits the repo clean at 0 violations.
 
 ## Honest caveats
 
-- No browser was opened in this build, per the build rules. Visual QA therefore rested
-  on the DOM smoke harness plus code review. Real rendering, the flicker feel, and the
-  rounded font fallbacks on Windows or Android are unverified by eye.
+- A headless Chromium audit ran at 1440x900 and 390x844 on 2026-11-22 and passed 56
+  checks: real pointer clicks through the whole lab, zero console errors, zero
+  exceptions, zero external requests, and the playfield fully above the phone fold.
+  Fine visual QA is still untested by eye: the flicker feel, the rounded font
+  fallbacks on Windows or Android, and how the lab reads on a real phone.
 - Screen reader play is narrated through a live region rather than a native grid
   semantic. Keyboard play was exercised through the stubbed harness, not with assistive
   technology, so the two experiences are expected to work but are not proven equal.
@@ -115,9 +130,12 @@ honesty harness audits the repo clean at 0 violations.
 - Every pixel drawn in code: stars, moon, hills, twelve costumed silhouettes, and a
   flickering lantern glow are all canvas, with no image files and a reduced motion mode
   that swaps the flicker for a steady flame.
+- A Solvability and Symmetry Lab proves all twelve levels beatable inside their own
+  rules, grades four carving strategies through the real engine, and exports a
+  SHA-256 stamped proof brief as JSON, CSV, or Markdown.
 - Small, testable, honest: a zero dependency static page where the pure engine runs
-  unchanged in node:test, 41 tests with 1190 assertion executions, plus a DOM smoke pass
-  over the whole game flow.
+  unchanged in node:test, 400 tests plus 62 DOM smoke checks and a 56 check headless
+  Chromium audit over the game flow and the lab.
 
 ## The short version
 
@@ -126,6 +144,32 @@ engine, twelve authored levels, keyboard and pointer play, and a test suite that
 the engine, the level data, and the page wiring. The build is GitHub Pages ready as is.
 The one thing it has not had is a human holding it, so a five minute play pass on real
 hardware, phone and laptop, is the highest value next step before submission.
+
+## Solvability Lab pass 2026-11-22
+
+A pure analysis module joined the page: `js/solver-lab.js` proves each of the
+twelve levels solvable inside its own rules by simulating real carves through
+`applyCarve`, never reimplementing them. It reports target size, minimum cuts
+(mirror levels halve the action count, budgets count carved cells), budget
+headroom, stem safety, and the optimal score, then grades four strategies
+(exact optimal, conservative half, noisy overcarve, mirror unaware) through the
+real `scoreCarve`. A pure JS FIPS 180-4 SHA-256 stamps a frozen canonical proof
+payload per level and strategy, so the on page fingerprint and the JSON, CSV,
+and Markdown exports always carry the same digest; the CSV is formula escaped.
+A strict `#ll=` hash codec bookmarks level, strategy, and lab visibility, fails
+closed on malformed input, and blocks prototype pollution keys. Eighteen in
+page self tests run from the lab itself.
+
+The panel sits below the game screens, hidden until the Solvability Lab button
+opens it, so the phone playfield stays above the fold. The button stays hidden
+when the module file is absent. Lab clicks found two real bugs in review:
+the SVG chart groups only took pointer events over painted bars (a full column
+hit rect now catches every click), and Jump to Level left the page scrolled at
+the lab (it now scrolls back to the top).
+
+Honest counts after the pass: 400 node tests, 62 DOM smoke checks, 56 Chromium
+audit checks at two viewports, all green. The audit used a throwaway headless
+profile on ephemeral ports and left no processes or scratch behind.
 
 ## Refinement Pass 2026-10-24
 

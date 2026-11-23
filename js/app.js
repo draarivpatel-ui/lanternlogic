@@ -83,6 +83,25 @@
     endLine: $('end-line'),
     btnEndLevels: $('btn-end-levels'),
     btnEndAgain: $('btn-end-again'),
+    btnLab: $('btn-lab'),
+    labSection: $('lab-section'),
+    labLevelRows: $('lab-level-rows'),
+    labBudgetChart: $('lab-budget-chart'),
+    labStrategies: $('lab-strategies'),
+    labStrategyRows: $('lab-strategy-rows'),
+    labBlueprint: $('lab-blueprint'),
+    btnLabJump: $('btn-lab-jump'),
+    labDigest: $('lab-digest-code'),
+    btnLabJson: $('btn-lab-json'),
+    btnLabCsv: $('btn-lab-csv'),
+    btnLabMd: $('btn-lab-md'),
+    btnLabLink: $('btn-lab-link'),
+    btnLabVerify: $('btn-lab-verify'),
+    btnLabTamper: $('btn-lab-tamper'),
+    btnLabTests: $('btn-lab-tests'),
+    labVerifyOut: $('lab-verify-out'),
+    labTestCount: $('lab-test-count'),
+    labTestList: $('lab-test-list'),
     live: $('live')
   };
 
@@ -1105,6 +1124,393 @@
     announce('All twelve lanterns lit, ' + total + ' of 1200 points. ' + line);
   }
 
+  /* Solvability and Symmetry Lab. Runs entirely on the optional
+   * js/solver-lab.js module; when that file is absent the toggle stays
+   * hidden and the game is untouched. */
+
+  const LAB = window.LanternLab;
+  let labState = null;
+
+  function labReady() {
+    return !!(LAB && typeof LAB.analyzeAll === 'function' &&
+      dom.labSection && dom.btnLab);
+  }
+
+  function labLevel() {
+    return LEVELS.find((entry) => entry.id === labState.level) || LEVELS[0];
+  }
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS
+      ? document.createElementNS('http://www.w3.org/2000/svg', tag)
+      : document.createElement(tag);
+    for (const k of Object.keys(attrs)) el.setAttribute(k, String(attrs[k]));
+    return el;
+  }
+
+  function cellEl(tag, text) {
+    const el = document.createElement(tag);
+    el.textContent = text;
+    return el;
+  }
+
+  function readLabHash() {
+    try {
+      return window.location && typeof window.location.hash === 'string'
+        ? window.location.hash : '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function writeLabHash() {
+    if (!labState || !LAB) return;
+    const hash = LAB.encodeHash(labState);
+    if (!hash || !window.history || typeof window.history.replaceState !== 'function') return;
+    try {
+      window.history.replaceState(null, '', hash);
+    } catch (err) {
+      /* File URLs or strict modes can refuse; the lab still works. */
+    }
+  }
+
+  function setLabOpen(open) {
+    labState.lab = open;
+    dom.labSection.hidden = !open;
+    dom.btnLab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) renderLab();
+    writeLabHash();
+  }
+
+  function selectLabLevel(id) {
+    if (!labState || id === labState.level) return;
+    labState.level = id;
+    renderLab();
+    writeLabHash();
+    announce('Lab level ' + id + ' selected.');
+  }
+
+  function selectLabStrategy(id) {
+    if (!labState || id === labState.strategy) return;
+    labState.strategy = id;
+    renderLab();
+    writeLabHash();
+    announce('Strategy ' + (LAB.STRATEGY_LABELS[id] || id) + ' selected.');
+  }
+
+  function renderLab() {
+    if (!labReady() || !labState) return;
+    renderLabLevels();
+    renderStrategyButtons();
+    renderLabStrategies();
+    renderBlueprint();
+    renderProof();
+  }
+
+  function renderLabLevels() {
+    const rows = LAB.analyzeAll();
+    dom.labLevelRows.innerHTML = '';
+    for (const a of rows) {
+      const tr = document.createElement('tr');
+      tr.className = 'lab-row' + (a.id === labState.level ? ' is-selected' : '');
+      const tdName = document.createElement('td');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'lab-row-btn';
+      button.textContent = a.id + ' ' + a.name;
+      if (a.id === labState.level) button.setAttribute('aria-current', 'true');
+      button.addEventListener('click', () => selectLabLevel(a.id));
+      tdName.appendChild(button);
+      tr.appendChild(tdName);
+      tr.appendChild(cellEl('td', String(a.targetCount)));
+      tr.appendChild(cellEl('td', String(a.minActions)));
+      tr.appendChild(cellEl('td', a.budget == null ? 'none' : String(a.budget)));
+      tr.appendChild(cellEl('td', a.headroom == null ? 'none' : '+' + a.headroom));
+      tr.appendChild(cellEl('td', a.stemCount ? a.stemDetail : 'none'));
+      tr.appendChild(cellEl('td', a.optimalScore + ' ' + a.optimalGrade));
+      dom.labLevelRows.appendChild(tr);
+    }
+    renderBudgetChart(rows);
+  }
+
+  function renderBudgetChart(rows) {
+    const svg = dom.labBudgetChart;
+    svg.innerHTML = '';
+    const W = 560;
+    const H = 200;
+    const padL = 36;
+    const padR = 10;
+    const padT = 26;
+    const padB = 30;
+    const iw = W - padL - padR;
+    const ih = H - padT - padB;
+    let maxV = 1;
+    for (const r of rows) maxV = Math.max(maxV, r.minCells, r.budget || 0);
+    maxV += 4;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    svg.appendChild(svgEl('line', {
+      x1: padL, y1: padT + ih, x2: padL + iw, y2: padT + ih, 'class': 'lab-axis'
+    }));
+    svg.appendChild(svgEl('line', {
+      x1: padL, y1: padT, x2: padL, y2: padT + ih, 'class': 'lab-axis'
+    }));
+    const cap = svgEl('text', {
+      x: 4, y: padT - 8, 'class': 'lab-legend-text'
+    });
+    cap.textContent = 'cells';
+    svg.appendChild(cap);
+
+    const groupW = iw / rows.length;
+    rows.forEach((r, i) => {
+      const g = svgEl('g', {
+        'class': 'lab-bar' + (r.id === labState.level ? ' is-selected' : ''),
+        tabindex: '0',
+        role: 'button',
+        'aria-label': 'Level ' + r.id + ', minimum cuts ' + r.minActions +
+          (r.budget == null ? ', no cut budget' : ', budget ' + r.budget)
+      });
+      const x0 = padL + i * groupW;
+      const budH = r.budget == null ? ih : ih * r.budget / maxV;
+      const minH = ih * r.minCells / maxV;
+      /* A group only gets pointer events over painted children, so a
+       * transparent slab catches the whole column as a hit target. */
+      g.appendChild(svgEl('rect', {
+        x: x0, y: padT, width: groupW, height: ih + 22,
+        'class': 'lab-bar-hit'
+      }));
+      g.appendChild(svgEl('rect', {
+        x: x0 + groupW * 0.12, y: padT + ih - budH,
+        width: groupW * 0.34, height: budH,
+        'class': 'lab-bar-budget' + (r.budget == null ? ' is-open' : '')
+      }));
+      g.appendChild(svgEl('rect', {
+        x: x0 + groupW * 0.52, y: padT + ih - minH,
+        width: groupW * 0.34, height: minH,
+        'class': 'lab-bar-min'
+      }));
+      const label = svgEl('text', {
+        x: x0 + groupW / 2, y: padT + ih + 16,
+        'text-anchor': 'middle', 'class': 'lab-bar-label'
+      });
+      label.textContent = String(r.id);
+      g.appendChild(label);
+      g.addEventListener('click', () => selectLabLevel(r.id));
+      g.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectLabLevel(r.id);
+        }
+      });
+      svg.appendChild(g);
+    });
+
+    const ly = padT - 12;
+    svg.appendChild(svgEl('rect', {
+      x: padL + iw - 150, y: ly - 8, width: 10, height: 10, 'class': 'lab-bar-min'
+    }));
+    const lmin = svgEl('text', { x: padL + iw - 136, y: ly, 'class': 'lab-legend-text' });
+    lmin.textContent = 'Min cuts';
+    svg.appendChild(lmin);
+    svg.appendChild(svgEl('rect', {
+      x: padL + iw - 74, y: ly - 8, width: 10, height: 10, 'class': 'lab-bar-budget'
+    }));
+    const lbud = svgEl('text', { x: padL + iw - 60, y: ly, 'class': 'lab-legend-text' });
+    lbud.textContent = 'Budget';
+    svg.appendChild(lbud);
+  }
+
+  function renderStrategyButtons() {
+    dom.labStrategies.innerHTML = '';
+    for (const id of LAB.STRATEGIES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lab-strategy-btn';
+      b.textContent = LAB.STRATEGY_LABELS[id] || id;
+      b.setAttribute('aria-pressed', id === labState.strategy ? 'true' : 'false');
+      b.addEventListener('click', () => selectLabStrategy(id));
+      dom.labStrategies.appendChild(b);
+    }
+  }
+
+  function renderLabStrategies() {
+    dom.labStrategyRows.innerHTML = '';
+    const rows = LAB.compareAll(labLevel());
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      tr.className = 'lab-row' + (r.strategy === labState.strategy ? ' is-selected' : '');
+      const tdName = document.createElement('td');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'lab-row-btn';
+      button.textContent = r.label;
+      button.addEventListener('click', () => selectLabStrategy(r.strategy));
+      tdName.appendChild(button);
+      tr.appendChild(tdName);
+      tr.appendChild(cellEl('td', r.actions + (r.refusals ? ' (+' + r.refusals + ' refused)' : '')));
+      tr.appendChild(cellEl('td', String(r.shape)));
+      tr.appendChild(cellEl('td', String(r.symmetry)));
+      tr.appendChild(cellEl('td', String(r.shellSaved)));
+      tr.appendChild(cellEl('td', r.stemVerdict));
+      tr.appendChild(cellEl('td', r.total + ' ' + r.grade));
+      dom.labStrategyRows.appendChild(tr);
+    }
+  }
+
+  function renderBlueprint() {
+    const svg = dom.labBlueprint;
+    svg.innerHTML = '';
+    const bp = LAB.diffBlueprint(labLevel(), labState.strategy);
+    if (!bp) return;
+    const W = 240;
+    const cell = W / L.GRID;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + W);
+    for (const row of bp.cells) {
+      for (const c of row) {
+        svg.appendChild(svgEl('rect', {
+          x: c.c * cell + 0.75, y: c.r * cell + 0.75,
+          width: cell - 1.5, height: cell - 1.5, rx: 2,
+          'class': 'bp-' + c.cls
+        }));
+      }
+    }
+  }
+
+  function currentProof() {
+    return LAB.buildProof(labLevel(), labState.strategy);
+  }
+
+  function renderProof() {
+    const p = currentProof();
+    if (p) dom.labDigest.textContent = p.sha256;
+  }
+
+  function labDownload(name, text, type) {
+    try {
+      if (typeof Blob === 'undefined' || typeof URL === 'undefined' ||
+          typeof URL.createObjectURL !== 'function') return;
+      const blob = new Blob([text], { type: type });
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = name;
+      if (typeof a.click === 'function') a.click();
+      if (typeof URL.revokeObjectURL === 'function' && window.setTimeout) {
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch (err) {
+      /* Downloads are best effort; the digest on page is the same proof. */
+    }
+  }
+
+  function labShareUrl() {
+    const hash = LAB.encodeHash(labState);
+    try {
+      if (window.location && typeof window.location.href === 'string') {
+        return window.location.href.split('#')[0] + hash;
+      }
+    } catch (err) {
+      /* Fall through to the bare hash. */
+    }
+    return hash;
+  }
+
+  function labVerifyOut(text, bad) {
+    dom.labVerifyOut.textContent = text;
+    dom.labVerifyOut.classList.toggle('is-bad', !!bad);
+  }
+
+  function initLab() {
+    if (!labReady()) return;
+    labState = { level: 1, strategy: 'exact-optimal', lab: false };
+    const decoded = LAB.decodeHash(readLabHash());
+    if (decoded) labState = decoded;
+
+    dom.btnLab.hidden = false;
+    dom.btnLab.setAttribute('aria-expanded', labState.lab ? 'true' : 'false');
+    dom.btnLab.addEventListener('click', () => setLabOpen(!labState.lab));
+    dom.btnLabJump.addEventListener('click', () => {
+      announce('Carving level ' + labState.level + ' next.');
+      startLevel(labState.level);
+      /* The lab lives below the game; land back at the top of the screen
+       * so the playfield is not scrolled out of view. */
+      if (window.scrollTo) window.scrollTo(0, 0);
+    });
+    dom.btnLabJson.addEventListener('click', () => {
+      const p = currentProof();
+      if (p) labDownload('lantern-proof-l' + p.level.id + '-' + p.strategy + '.json',
+        LAB.exportJson(p), 'application/json');
+    });
+    dom.btnLabCsv.addEventListener('click', () => {
+      const p = currentProof();
+      if (p) labDownload('lantern-proof-l' + p.level.id + '-' + p.strategy + '.csv',
+        LAB.exportCsv(p), 'text/csv');
+    });
+    dom.btnLabMd.addEventListener('click', () => {
+      const p = currentProof();
+      if (p) labDownload('lantern-proof-l' + p.level.id + '-' + p.strategy + '.md',
+        LAB.exportMarkdown(p), 'text/markdown');
+    });
+    dom.btnLabLink.addEventListener('click', () => {
+      const url = labShareUrl();
+      const done = () => labVerifyOut('Share link ready: ' + url, false);
+      if (typeof navigator !== 'undefined' && navigator.clipboard &&
+          typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(url).then(done, () => labVerifyOut('Copy blocked. Link: ' + url, false));
+      } else {
+        labVerifyOut('Link: ' + url, false);
+      }
+    });
+    dom.btnLabVerify.addEventListener('click', () => {
+      const p = currentProof();
+      const v = p && LAB.verifyProof(p);
+      labVerifyOut(v && v.ok
+        ? 'Verified. The payload matches SHA-256 ' + p.sha256.slice(0, 16) + '...'
+        : 'Verification failed: ' + (v ? v.reason : 'no proof'), !(v && v.ok));
+    });
+    dom.btnLabTamper.addEventListener('click', () => {
+      const p = currentProof();
+      if (!p) return;
+      const forged = JSON.parse(LAB.exportJson(p));
+      forged.comparison.total = forged.comparison.total === 0 ? 99 : 0;
+      const v = LAB.verifyProof(forged);
+      labVerifyOut(v.ok
+        ? 'Tamper missed, which should never happen.'
+        : 'Tamper caught. Changing the total to ' + forged.comparison.total +
+          ' breaks the digest.', !v.ok);
+    });
+    dom.btnLabTests.addEventListener('click', () => {
+      const list = LAB.selfTests();
+      dom.labTestList.innerHTML = '';
+      let passing = 0;
+      for (const entry of list) {
+        if (entry.pass) passing++;
+        const li = document.createElement('li');
+        li.textContent = (entry.pass ? 'PASS ' : 'FAIL ') + entry.name;
+        li.className = entry.pass ? 'is-pass' : 'is-fail';
+        dom.labTestList.appendChild(li);
+      }
+      dom.labTestCount.textContent = passing + ' of ' + list.length + ' lab checks passing';
+      labVerifyOut(passing === list.length
+        ? 'All lab checks pass.'
+        : 'Some lab checks failed.', passing !== list.length);
+    });
+
+    window.addEventListener('hashchange', () => {
+      const next = LAB.decodeHash(readLabHash());
+      if (!next) return;
+      labState = next;
+      dom.labSection.hidden = !next.lab;
+      dom.btnLab.setAttribute('aria-expanded', next.lab ? 'true' : 'false');
+      if (next.lab) renderLab();
+    });
+
+    if (labState.lab) {
+      dom.labSection.hidden = false;
+      renderLab();
+    }
+  }
+
   /* Wiring. */
 
   dom.btnStart.addEventListener('click', () => startLevel(Math.min(progress.unlocked, 12)));
@@ -1298,6 +1704,7 @@
   buildStars();
   resizeAll();
   showScreen('title');
+  initLab();
   window.requestAnimationFrame(visualLoop);
   if (REDUCED.matches) {
     drawSky(0);
