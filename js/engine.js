@@ -315,7 +315,7 @@
       ? Math.min(10, Math.round(10 * timeLeft / Math.max(1, level.time)))
       : 0;
     const peekPenalty = PEEK_COST * peeks;
-    const total = Math.max(0, Math.min(100, base - peekPenalty + timeBonus));
+    const total = Math.max(0, Math.min(100, base + timeBonus) - peekPenalty);
 
     const grade = gradeFor(total);
     return {

@@ -184,7 +184,7 @@
         if (res.ok || res.reason !== 'stem') stemProtected = false;
       }
       for (const k of level.target) {
-        if (level.stemSafe.has(k) || level.stemSafe.has(L.twinKey(k))) {
+        if (level.stemSafe.has(k) || (level.mirror && level.stemSafe.has(L.twinKey(k)))) {
           stemProtected = false;
         }
       }
@@ -460,10 +460,25 @@
    */
   const proofCache = new Map();
 
+  function proofCacheKey(level, strategyId) {
+    const identity = {
+      id: level.id,
+      name: level.name,
+      visitor: level.visitor,
+      time: level.time,
+      rows: level.rows.slice(),
+      mirror: level.mirror,
+      maxCarved: level.maxCarved,
+      stemSafe: Array.from(level.stemSafe).sort(),
+      target: Array.from(level.target).sort()
+    };
+    return stableStringify(identity) + '|' + strategyId;
+  }
+
   function buildProof(level, strategyId) {
     level = asLevel(level);
     if (!STRATEGIES.includes(strategyId)) return null;
-    const key = level.id + '|' + strategyId;
+    const key = proofCacheKey(level, strategyId);
     if (proofCache.has(key)) return proofCache.get(key);
 
     const analysis = analyzeLevel(level);
@@ -522,6 +537,12 @@
   function verifyProof(payload) {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       return { ok: false, reason: 'not a proof payload' };
+    }
+    if (payload.tool !== PROOF_TOOL) {
+      return { ok: false, reason: 'not a lantern logic level proof' };
+    }
+    if (payload.format !== PROOF_FORMAT) {
+      return { ok: false, reason: 'unsupported proof format' };
     }
     if (typeof payload.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(payload.sha256)) {
       return { ok: false, reason: 'missing or malformed digest' };
