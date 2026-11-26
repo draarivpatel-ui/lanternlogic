@@ -1,6 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -87,3 +88,52 @@ test('the palette passes WCAG contrast on its core text pairs', () => {
   assert.ok(contrast(accent, sky) >= 4.5, 'accent text on the plum sky clears AA, got ' + contrast(accent, sky).toFixed(2));
   assert.ok(contrast(buttonInk, accent) >= 4.5, 'button label on lantern orange clears AA, got ' + contrast(buttonInk, accent).toFixed(2));
 });
+
+/*
+ * The README points readers at NOTES.md for exact suite counts, so the notes
+ * must not drift from the real suite. Each test file is run once to read its
+ * own count from the runner report. This file is probed with the guard below
+ * disabled, then the guard itself is added back as the final test, which is
+ * why its expected count carries a plus one.
+ */
+const NOTES_PROBE_ENV = 'LANTERN_NOTES_PROBE';
+
+function countTestsIn(file, extraEnv) {
+  const env = Object.assign({}, process.env, extraEnv || {});
+  // A child runner must start clean rather than inherit this run's context.
+  delete env.NODE_TEST_CONTEXT;
+  delete env.NODE_UNIQUE_ID;
+  const result = spawnSync(
+    process.execPath,
+    ['--test', path.join(__dirname, file)],
+    { env, encoding: 'utf8', timeout: 60000 }
+  );
+  const output = String(result.stdout || '') + String(result.stderr || '');
+  const match = /^(?:ℹ|#) tests (\d+)\s*$/m.exec(output);
+  assert.ok(match, 'the runner reported a test count for ' + file + '\n' + output.slice(-600));
+  return Number(match[1]);
+}
+
+if (!process.env[NOTES_PROBE_ENV]) {
+  test('the build notes count every test file exactly', () => {
+    const notes = fs.readFileSync(path.join(ROOT, 'NOTES.md'), 'utf8');
+    const section = notes.split('## Exact real test counts')[1].split('\n## ')[0];
+    const totalMatch = /runs (\d+) tests, \1 pass/.exec(section);
+    assert.ok(totalMatch, 'the notes state one total that passes in full');
+    const statedTotal = Number(totalMatch[1]);
+    const listed = new Map(
+      [...section.matchAll(/`tests\/([^`]+\.test\.js)`: (\d+) tests/g)]
+        .map((match) => [match[1], Number(match[2])])
+    );
+    const self = path.basename(__filename);
+    const files = fs.readdirSync(__dirname).filter((name) => name.endsWith('.test.js')).sort();
+    assert.deepEqual([...listed.keys()].sort(), files, 'every test file appears in the notes');
+    const actual = files.map((file) => [
+      file,
+      countTestsIn(file, file === self ? { [NOTES_PROBE_ENV]: '1' } : {}) + (file === self ? 1 : 0)
+    ]);
+    const listedEntries = [...listed.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    assert.deepEqual(listedEntries, actual, 'the per file counts match the runner');
+    assert.equal(actual.reduce((sum, entry) => sum + entry[1], 0), statedTotal, 'the per file counts add up to the stated total');
+  });
+}

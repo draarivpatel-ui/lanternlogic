@@ -57,8 +57,9 @@ performed in this build; the folder is a plain static site ready for GitHub Page
 
 ## Exact real test counts
 
-`npm test` runs 400 tests, 400 pass, 0 fail, about 135 ms on this machine. Well inside the
-30 second budget. No network access anywhere.
+`npm test` runs 407 tests, 407 pass, 0 fail, under 5 seconds on this machine (the
+count guard re-runs each file once, see below). Well inside the 30 second budget.
+No network access anywhere.
 
 - `tests/engine.test.js`: 18 tests covering pumpkin geometry, pattern parsing, region
   selection toggles, refusals outside the shell, the stem safe zone, cut budgets,
@@ -68,15 +69,20 @@ performed in this build; the folder is a plain static site ready for GitHub Page
   target inside the pumpkin, mirror symmetric targets, solvable cut budgets, sane time
   budgets, constraint escalation, known visitors, and copy hygiene with no em or en
   dashes and no emoji.
-- `tests/scoring.test.js`: 9 tests on scoring, including hand computed exact totals for
+- `tests/scoring.test.js`: 11 tests on scoring, including hand computed exact totals for
   perfect, partial, sloppy, and asymmetric carves, the time bonus bar, the peek cost and
-  the zero floor, grade band thresholds, verdict determinism, and a proof that every
-  level is solvable to exactly 100.
-- `tests/shell.test.js`: 8 tests on the shipped files, markup hooks, banned punctuation,
-  token led CSS, the reduced motion block, the zero dependency manifest, and four real
-  WCAG contrast ratios computed from the parsed tokens, 15.72 for body ink on the sky,
-  9.96 for soft text, 9.05 for accent text, and 8.45 for button labels on lantern
-  orange.
+  the zero floor, grade band thresholds, verdict determinism, a proof that every level
+  is solvable to exactly 100, and defaults when the options object is missing.
+- `tests/shell.test.js`: 7 tests on the shipped files, markup hooks, banned punctuation,
+  token led CSS, the reduced motion block, the zero dependency manifest, this exact
+  count guard, and four real WCAG contrast ratios computed from the parsed tokens,
+  15.72 for body ink on the sky, 9.96 for soft text, 9.05 for accent text, and 8.45
+  for button labels on lantern orange.
+- `tests/deep-regression.test.js`: 6 tests on boundary cases with custom levels and
+  hostile proof payloads: a peek that still costs points at the score cap, proof cache
+  keys that cannot collide across levels sharing an id, foreign or wrong-version proofs
+  refused before the digest is trusted, a stem twin that only conflicts on mirror
+  levels, and the lab chart not being exposed as one presentational image.
 - `tests/solver-lab.test.js`: 356 tests on the lab module. FIPS 180-4 SHA-256 known
   answer vectors including the million character case, per level solvability proofs
   through the real carving rules, all four strategies against all twelve levels with
@@ -86,7 +92,7 @@ performed in this build; the folder is a plain static site ready for GitHub Page
   parity and tamper detection across all three export formats, and the in page self
   test list itself.
 
-The suites contain 442 written assert call sites; because many run inside loops over
+The suites contain 459 written assert call sites; because many run inside loops over
 all twelve levels and all inside cells, the runtime count is several times higher.
 
 `scripts/dom-smoke.js` adds 62 wiring checks outside the default suite, including the
@@ -134,7 +140,7 @@ honesty harness audits the repo clean at 0 violations.
   rules, grades four carving strategies through the real engine, and exports a
   SHA-256 stamped proof brief as JSON, CSV, or Markdown.
 - Small, testable, honest: a zero dependency static page where the pure engine runs
-  unchanged in node:test, 400 tests plus 62 DOM smoke checks and a 56 check headless
+  unchanged in node:test, 407 tests plus 62 DOM smoke checks and a 56 check headless
   Chromium audit over the game flow and the lab.
 
 ## The short version
