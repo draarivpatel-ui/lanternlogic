@@ -57,7 +57,7 @@ performed in this build; the folder is a plain static site ready for GitHub Page
 
 ## Exact real test counts
 
-`npm test` runs 407 tests, 407 pass, 0 fail, under 5 seconds on this machine (the
+`npm test` runs 408 tests, 408 pass, 0 fail, under 5 seconds on this machine (the
 count guard re-runs each file once, see below). Well inside the 30 second budget.
 No network access anywhere.
 
@@ -83,7 +83,7 @@ No network access anywhere.
   keys that cannot collide across levels sharing an id, foreign or wrong-version proofs
   refused before the digest is trusted, a stem twin that only conflicts on mirror
   levels, and the lab chart not being exposed as one presentational image.
-- `tests/solver-lab.test.js`: 356 tests on the lab module. FIPS 180-4 SHA-256 known
+- `tests/solver-lab.test.js`: 357 tests on the lab module. FIPS 180-4 SHA-256 known
   answer vectors including the million character case, per level solvability proofs
   through the real carving rules, all four strategies against all twelve levels with
   independent score recomputation, blueprint classification counts, chart row sanity,

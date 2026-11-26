@@ -617,3 +617,12 @@ test('no banned dashes hide in lab copy', () => {
     assert.equal(Lab.STRATEGY_NOTES[id].includes('\u2014'), false);
   }
 });
+
+
+test('batch4 csv guard covers invisible unicode prefixes and numeric negatives', () => {
+  for (const input of ['\u200b=cmd', '\ufeff=cmd', '\u00a0=cmd', '\u2060@cmd', ' \u200b\t=cmd']) {
+    const out = Lab.csvCell(input);
+    assert.ok(out.startsWith("'") || out.startsWith("\"'"), input + ' -> ' + out);
+  }
+  assert.ok(!String(Lab.csvCell(-12.5)).includes("'"));
+});

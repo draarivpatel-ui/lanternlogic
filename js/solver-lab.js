@@ -562,8 +562,9 @@
    * character is one a spreadsheet would treat as a formula or control.
    */
   function csvCell(value) {
+    const numeric = typeof value === 'number' && Number.isFinite(value);
     let s = value == null ? '' : String(value);
-    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (!numeric && /^[\s\p{Cf}\p{Cc}]*[=+\-@\t\r]/u.test(s)) s = "'" + s;
     if (/[",\n\r]/.test(s) || s.charAt(0) === "'") {
       s = '"' + s.replace(/"/g, '""') + '"';
     }
