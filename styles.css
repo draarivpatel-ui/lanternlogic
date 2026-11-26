@@ -939,3 +939,23 @@ kbd {
     transition: none;
   }
 }
+
+@media print {
+  @page { margin: 0.5in; }
+  :root {
+    color-scheme: light;
+    --color-panel: #fff; --color-panel-line: #999; --color-ink: #111;
+    --color-ink-soft: #333; --shadow-panel: none; --shadow-lift: none;
+  }
+  body { background: #fff !important; color: #111 !important; }
+  #sky, .skip-link, .title-actions, .controls, .results-actions, .end-actions,
+  .lab-actions, .lab-jump-row, button { display: none !important; }
+  .screen, .visitor-panel, .report, .lab-panel {
+    background: #fff !important; color: #111 !important;
+    box-shadow: none !important; border-color: #999 !important;
+  }
+  .game-layout, .results-layout, .lab-grid { display: block !important; }
+  .lab-table-wrap { overflow: visible !important; }
+  .lab-panel, .report, .visitor-panel { break-inside: avoid; }
+  canvas { max-width: 100% !important; height: auto !important; }
+}
