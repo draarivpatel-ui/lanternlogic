@@ -4,7 +4,7 @@
   "private": true,
   "description": "Lantern Logic, a pumpkin carving puzzle game by Aariv Patel",
   "scripts": {
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.js tests/static-integrity.test.cjs"
   },
   "license": "MIT"
 }
